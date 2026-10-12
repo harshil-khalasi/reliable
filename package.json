@@ -1,0 +1,25 @@
+{
+  "name": "employee-project-management-system",
+  "version": "1.0.0",
+  "description": "Production-ready MERN Stack Employee & Project Management System with Role-based Access and Real-time Dashboard",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "install:all": "npm --prefix server install && npm --prefix client install"
+  },
+  "keywords": [
+    "mern",
+    "mongodb",
+    "express",
+    "react",
+    "node",
+    "project-management",
+    "employee-management",
+    "jwt",
+    "rbac"
+  ],
+  "author": "Harshil Khalasi",
+  "license": "MIT"
+}
