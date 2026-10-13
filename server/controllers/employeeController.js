@@ -135,6 +135,13 @@ const createEmployee = async (req, res, next) => {
       });
     }
 
+    if (!password || password.trim().length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error: Password is required and must be at least 6 characters long.',
+      });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     const existing = await Employee.findOne({ email: normalizedEmail });
@@ -157,7 +164,7 @@ const createEmployee = async (req, res, next) => {
     });
 
     // Create corresponding login account for this employee
-    const initialPassword = password && password.trim().length >= 6 ? password.trim() : 'employee123';
+    const initialPassword = password.trim();
     let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       user = await User.create({

@@ -98,9 +98,11 @@ const Employees = () => {
     status: 'Active',
   });
 
-  const fetchEmployees = useCallback(async () => {
+  const fetchEmployees = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError('');
       const data = await employeeApi.getEmployees({
         search,
@@ -120,21 +122,32 @@ const Employees = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch employees.');
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   }, [search, department, status, sortBy, sortOrder, page]);
 
   useEffect(() => {
     fetchEmployees();
 
-    const handleFocus = () => fetchEmployees();
-    window.addEventListener('focus', handleFocus);
+    // Auto update when window gains focus, tab becomes active, or data changes across app
+    const handleFocus = () => fetchEmployees(true);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchEmployees(true);
+      }
+    };
+    const handleDataUpdated = () => fetchEmployees(true);
 
-    const interval = setInterval(fetchEmployees, 10000);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('app:data-updated', handleDataUpdated);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('app:data-updated', handleDataUpdated);
     };
   }, [fetchEmployees]);
 
@@ -145,6 +158,7 @@ const Employees = () => {
     phone: '',
     designation: '',
     joiningDate: '',
+    password: '',
   });
 
   const validateField = (name, value) => {
@@ -167,6 +181,18 @@ const Employees = () => {
       else if (value.trim().length < 2) error = 'Designation must be at least 2 characters.';
     } else if (name === 'joiningDate') {
       if (!value) error = 'Joining Date is required.';
+    } else if (name === 'password') {
+      if (!selectedEmployee) {
+        if (!value || !value.trim()) {
+          error = 'Password is required.';
+        } else if (value.trim().length < 6) {
+          error = 'Password must be at least 6 characters long.';
+        }
+      } else {
+        if (value && value.trim().length < 6) {
+          error = 'Password must be at least 6 characters long if changed.';
+        }
+      }
     }
     return error;
   };
@@ -196,7 +222,7 @@ const Employees = () => {
       password: '',
     });
     setFormError('');
-    setFieldErrors({ name: '', email: '', phone: '', designation: '', joiningDate: '' });
+    setFieldErrors({ name: '', email: '', phone: '', designation: '', joiningDate: '', password: '' });
     setIsFormModalOpen(true);
   };
 
@@ -214,7 +240,7 @@ const Employees = () => {
       password: '',
     });
     setFormError('');
-    setFieldErrors({ name: '', email: '', phone: '', designation: '', joiningDate: '' });
+    setFieldErrors({ name: '', email: '', phone: '', designation: '', joiningDate: '', password: '' });
     setIsFormModalOpen(true);
   };
 
@@ -243,6 +269,7 @@ const Employees = () => {
       phone: validateField('phone', formData.phone),
       designation: validateField('designation', formData.designation),
       joiningDate: validateField('joiningDate', formData.joiningDate),
+      password: validateField('password', formData.password),
     };
     setFieldErrors(errors);
 
@@ -265,8 +292,9 @@ const Employees = () => {
       }
 
       setIsFormModalOpen(false);
-      fetchEmployees();
+      fetchEmployees(true);
       if (refreshUser) refreshUser();
+      window.dispatchEvent(new CustomEvent('app:data-updated'));
 
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
@@ -286,7 +314,8 @@ const Employees = () => {
       await employeeApi.deleteEmployee(selectedEmployee._id);
       setIsDeleteModalOpen(false);
       setSuccessMessage(`Employee '${selectedEmployee.name}' deleted successfully.`);
-      fetchEmployees();
+      fetchEmployees(true);
+      window.dispatchEvent(new CustomEvent('app:data-updated'));
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete employee.');
@@ -769,7 +798,7 @@ const Employees = () => {
             {/* Login Password */}
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">
-                {selectedEmployee ? 'Reset Login Password (Optional)' : 'Login Password (for Employee Portal)'}
+                {selectedEmployee ? 'Reset Login Password (Optional)' : 'Login Password *'}
               </label>
               <input
                 type="password"
@@ -778,15 +807,18 @@ const Employees = () => {
                 placeholder={
                   selectedEmployee
                     ? 'Leave blank to retain current password'
-                    : 'e.g. employee123 (defaults to employee123 if blank)'
+                    : 'Enter password (minimum 6 characters)'
                 }
                 value={formData.password}
                 onChange={handleInputChange}
+                style={fieldErrors.password ? { borderColor: '#ef4444' } : {}}
+                required={!selectedEmployee}
               />
+              {fieldErrors.password && <div className="form-error">{fieldErrors.password}</div>}
               <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
                 {selectedEmployee
-                  ? 'Enter a new password if this employee requested a password reset.'
-                  : 'Default is employee123. The employee can use this to sign in and view their assigned projects.'}
+                  ? 'Leave blank to retain existing password, or enter at least 6 characters to update.'
+                  : 'Password must be at least 6 characters long (minimum 6 digits/characters required).'}
               </span>
             </div>
           </div>

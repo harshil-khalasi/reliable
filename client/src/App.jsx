@@ -24,20 +24,6 @@ const AppLayout = ({ children }) => {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
 
-  // Determine navbar title based on path
-  const getPageTitle = (pathname) => {
-    switch (pathname) {
-      case '/dashboard':
-        return 'Overview Dashboard';
-      case '/employees':
-        return 'Employee Management';
-      case '/projects':
-        return 'Project Management';
-      default:
-        return 'Reliable Solution Portal';
-    }
-  };
-
   const handleToggleSidebar = () => {
     if (window.innerWidth <= 768) {
       setMobileSidebarOpen((prev) => !prev);
@@ -54,10 +40,7 @@ const AppLayout = ({ children }) => {
         onClose={() => setMobileSidebarOpen(false)}
       />
       <div className="main-content">
-        <Navbar
-          onToggleSidebar={handleToggleSidebar}
-          title={getPageTitle(location.pathname)}
-        />
+        <Navbar onToggleSidebar={handleToggleSidebar} />
         <main style={{ flex: 1 }}>{children}</main>
       </div>
     </div>

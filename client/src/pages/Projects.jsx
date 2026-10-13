@@ -87,9 +87,11 @@ const Projects = () => {
   // Date validation message
   const [dateWarning, setDateWarning] = useState('');
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError('');
       const data = await projectApi.getProjects({
         search,
@@ -103,7 +105,9 @@ const Projects = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch projects.');
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   }, [search, statusFilter, priorityFilter]);
 
@@ -122,14 +126,23 @@ const Projects = () => {
     fetchProjects();
     fetchEmployeesList();
 
-    const handleFocus = () => fetchProjects();
-    window.addEventListener('focus', handleFocus);
+    // Auto update when window gains focus, tab becomes active, or data changes across app
+    const handleFocus = () => fetchProjects(true);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProjects(true);
+      }
+    };
+    const handleDataUpdated = () => fetchProjects(true);
 
-    const interval = setInterval(fetchProjects, 10000);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('app:data-updated', handleDataUpdated);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('app:data-updated', handleDataUpdated);
     };
   }, [fetchProjects]);
 
@@ -259,7 +272,8 @@ const Projects = () => {
       }
 
       setIsFormModalOpen(false);
-      fetchProjects();
+      fetchProjects(true);
+      window.dispatchEvent(new CustomEvent('app:data-updated'));
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to save project.');
@@ -275,7 +289,8 @@ const Projects = () => {
       await projectApi.deleteProject(selectedProject._id);
       setIsDeleteModalOpen(false);
       setSuccessMessage(`Project '${selectedProject.name}' deleted successfully.`);
-      fetchProjects();
+      fetchProjects(true);
+      window.dispatchEvent(new CustomEvent('app:data-updated'));
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete project.');
@@ -293,10 +308,11 @@ const Projects = () => {
       );
       await projectApi.updateProject(proj._id, { status: newStatus });
       setSuccessMessage(`Status for '${proj.name}' changed to ${newStatus}.`);
-      fetchProjects();
+      fetchProjects(true);
+      window.dispatchEvent(new CustomEvent('app:data-updated'));
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
-      fetchProjects();
+      fetchProjects(true);
       setError(err.response?.data?.message || 'Failed to update project status.');
     }
   };

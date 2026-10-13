@@ -12,11 +12,6 @@ const Navbar = ({ onToggleSidebar, title = 'Overview' }) => {
         >
           <Menu size={20} />
         </button>
-        <div style={{ minWidth: 0, overflow: 'hidden' }}>
-          <h2 className="navbar-title">
-            {title}
-          </h2>
-        </div>
       </div>
 
       <div />

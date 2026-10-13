@@ -26,10 +26,15 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
-      setError('');
       const data = await dashboardApi.getStats();
       if (data.success) {
-        setStats(data.stats);
+        setStats((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(data.stats)) {
+            return prev;
+          }
+          return data.stats;
+        });
+        setError('');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load dashboard metrics from server.');
@@ -41,16 +46,23 @@ const Dashboard = () => {
   useEffect(() => {
     fetchStats();
 
-    // Auto update metrics when window gains focus or tab becomes active
+    // Auto update metrics when window gains focus, tab becomes active, or data changes
     const handleFocus = () => fetchStats();
-    window.addEventListener('focus', handleFocus);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchStats();
+      }
+    };
+    const handleDataUpdated = () => fetchStats();
 
-    // Auto-sync polling every 8 seconds
-    const interval = setInterval(fetchStats, 8000);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('app:data-updated', handleDataUpdated);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('app:data-updated', handleDataUpdated);
     };
   }, []);
 
@@ -102,8 +114,8 @@ const Dashboard = () => {
     <div className="page-container">
       <div className="page-header">
         <div>
-          {!isAdmin && <h1 className="page-title">Employee Workspace</h1>}
-          <p className="page-subtitle" style={isAdmin ? { margin: 0 } : {}}>
+          <h1 className="page-title">{isAdmin ? 'Overview Dashboard' : 'Employee Workspace'}</h1>
+          <p className="page-subtitle">
             {isAdmin
               ? 'Overview of workforce metrics, department distribution, and active project lifecycles.'
               : 'Overview of your assigned deliverables, project status breakdown, and team directory.'}
